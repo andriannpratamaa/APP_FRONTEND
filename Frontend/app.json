@@ -48,8 +48,9 @@
         "root": "src/app"
       },
       "eas": {
-        "projectId": "5cfa87fd-aea9-42ab-ad97-30bcf18f49d3"
+        "projectId": "b3b324dc-148b-4a66-85fd-273999c4c10f"
       }
-    }
+    },
+    "owner": "andriannnpratama"
   }
 }
