@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { ENDPOINTS, API } from '../constants/api';
 import { ExportRequest } from '../types';
 
@@ -7,26 +8,31 @@ const downloadNative = async (
   fileName: string,
   onProgress?: (progress: number) => void
 ): Promise<string> => {
-  const FileSystem = require('expo-file-system/legacy');
   const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-  const downloadResult = await FileSystem.downloadAsync(url, fileUri, {
-    headers: {
-      Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    },
-    ...(onProgress && {
-      progressCallback: (progressEvent: { bytesWritten: number; totalBytesExpectedToWrite: number }) => {
-        if (progressEvent.totalBytesExpectedToWrite > 0) {
-          const percent = Math.round(
-            (progressEvent.bytesWritten * 100) / progressEvent.totalBytesExpectedToWrite
-          );
-          onProgress(percent);
-        }
+  const downloadResumable = FileSystem.createDownloadResumable(
+    url,
+    fileUri,
+    {
+      headers: {
+        Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       },
-    }),
-  });
+    },
+    onProgress
+      ? (downloadProgress) => {
+          const { totalBytesWritten, totalBytesExpectedToWrite } = downloadProgress;
+          if (totalBytesExpectedToWrite > 0) {
+            const percent = Math.round((totalBytesWritten * 100) / totalBytesExpectedToWrite);
+            onProgress(percent);
+          }
+        }
+      : undefined
+  );
 
-  return downloadResult.uri;
+  const result = await downloadResumable.downloadAsync();
+  if (!result) throw new Error('Gagal mengunduh file');
+
+  return result.uri;
 };
 
 const downloadWeb = async (url: string, fileName: string): Promise<string> => {

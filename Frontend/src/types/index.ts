@@ -15,7 +15,7 @@ export interface MonitoringData {
 
 export type DeviceStatus = 'online' | 'offline' | 'warning';
 
-export type TimeRange = '1h' | '6h' | '12h' | '24h' | '7d' | '30d';
+export type TimeRange = '5m' | '1h' | '6h' | '12h' | '24h' | '7d' | '30d';
 
 export interface ChartDataPoint {
   timestamp: string;

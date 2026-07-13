@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { monitoringService } from '../services/monitoring';
 import { CACHE_KEYS } from '../constants/api';
-import { HistoryParams, TimeRange } from '../types';
+import { HistoryParams, TimeRange, ChartData, MonitoringData } from '../types';
 import { useSettingsStore } from '../store/settings';
 import { useCallback } from 'react';
 
@@ -46,8 +46,34 @@ export const useMonitoringHistory = (params: HistoryParams) => {
   });
 };
 
+const latestToChartData = (latest: MonitoringData | undefined): ChartData => {
+  if (!latest) {
+    return { ac_voltage: [], ac_current: [], dc_voltage: [], temperature: [], humidity: [] };
+  }
+  const timestamp = latest.recorded_at;
+  return {
+    ac_voltage: [{ timestamp, value: latest.ac_voltage }],
+    ac_current: [{ timestamp, value: latest.ac_current }],
+    dc_voltage: [{ timestamp, value: latest.dc_voltage }],
+    temperature: [{ timestamp, value: latest.temperature }],
+    humidity: [{ timestamp, value: latest.humidity }],
+  };
+};
+
 export const useMonitoringChart = (timeRange: TimeRange) => {
   const { autoRefresh, refreshInterval, selectedDeviceId } = useSettingsStore();
+
+  if (timeRange === '5m') {
+    return useQuery({
+      queryKey: [...CACHE_KEYS.LATEST, 'chart', selectedDeviceId],
+      queryFn: async () => {
+        const latest = await monitoringService.getLatest(selectedDeviceId);
+        return latestToChartData(latest);
+      },
+      refetchInterval: 5000,
+      placeholderData: (prev) => prev,
+    });
+  }
 
   return useQuery({
     queryKey: [...CACHE_KEYS.CHART, timeRange, selectedDeviceId],

@@ -5,12 +5,16 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
+  Modal,
+  Platform,
 } from 'react-native';
 import {
   Text,
   useTheme,
   Card,
   IconButton,
+  Button,
+  TextInput,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +30,22 @@ import { DeviceSelector } from '../../components/DeviceSelector';
 import { COLORS, SPACING } from '../../constants/theme';
 import { formatDate, formatTime, formatVoltage, formatCurrent, formatTemperature, formatHumidity } from '../../utils/format';
 import { HistoryParams, MonitoringData } from '../../types';
+
+let DateTimePicker: React.ComponentType<{
+  value: Date;
+  mode: 'date' | 'time';
+  display: 'default' | 'spinner' | 'calendar' | 'clock';
+  onChange: (event: unknown, date?: Date) => void;
+  maximumDate?: Date;
+  minimumDate?: Date;
+}> = () => null;
+
+if (Platform.OS !== 'web') {
+  try {
+    const DTP = require('@react-native-community/datetimepicker');
+    DateTimePicker = DTP.default || DTP;
+  } catch {}
+}
 
 const ITEMS_PER_PAGE = 20;
 
@@ -58,17 +78,61 @@ export default function HistoryScreen() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [refreshing, setRefreshing] = useState(false);
 
-  const queryParams: HistoryParams = useMemo(
-    () => ({
+  const formatDateInput = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const parseDateInput = (text: string): Date | null => {
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
+  });
+  const [customEndDate, setCustomEndDate] = useState(new Date());
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<'start' | 'end'>('start');
+
+  const queryParams: HistoryParams = useMemo(() => {
+    const params: HistoryParams = {
       page,
       limit: ITEMS_PER_PAGE,
       sort_by: 'recorded_at',
       sort_order: sortOrder,
       search: searchQuery || undefined,
       filter: filterValue as HistoryParams['filter'],
-    }),
-    [page, sortOrder, searchQuery, filterValue]
-  );
+    };
+
+    if (filterValue === 'custom') {
+      params.start_date = customStartDate.toISOString();
+      params.end_date = customEndDate.toISOString();
+    } else if (filterValue === 'day') {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      params.start_date = start.toISOString();
+      params.end_date = new Date().toISOString();
+    } else if (filterValue === 'week') {
+      const start = new Date();
+      start.setDate(start.getDate() - 7);
+      params.start_date = start.toISOString();
+      params.end_date = new Date().toISOString();
+    } else if (filterValue === 'month') {
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      params.start_date = start.toISOString();
+      params.end_date = new Date().toISOString();
+    }
+
+    return params;
+  }, [page, sortOrder, searchQuery, filterValue, customStartDate, customEndDate]);
 
   const {
     data,
@@ -213,9 +277,97 @@ export default function HistoryScreen() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         filterValue={filterValue}
-        onFilterChange={setFilterValue}
+        onFilterChange={(val) => {
+          setFilterValue(val);
+          setPage(1);
+        }}
         filterOptions={filterOptions}
       />
+
+      {filterValue === 'custom' && (
+        <View style={styles.customDateRow}>
+          <View style={styles.dateInput}>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 4, fontWeight: '600' }}>
+              Mulai
+            </Text>
+            {Platform.OS === 'web' ? (
+              <TextInput
+                mode="outlined"
+                value={formatDateInput(customStartDate)}
+                onChangeText={(text) => {
+                  const parsed = parseDateInput(text);
+                  if (parsed) setCustomStartDate(parsed);
+                }}
+                placeholder="YYYY-MM-DD"
+                style={styles.dateField}
+                outlineStyle={{ borderRadius: 10 }}
+              />
+            ) : (
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setPickerTarget('start');
+                  setShowCustomPicker(true);
+                }}
+                icon="calendar"
+                style={styles.dateBtn}
+              >
+                {formatDateInput(customStartDate)}
+              </Button>
+            )}
+          </View>
+          <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 24 }}>
+            -
+          </Text>
+          <View style={styles.dateInput}>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 4, fontWeight: '600' }}>
+              Selesai
+            </Text>
+            {Platform.OS === 'web' ? (
+              <TextInput
+                mode="outlined"
+                value={formatDateInput(customEndDate)}
+                onChangeText={(text) => {
+                  const parsed = parseDateInput(text);
+                  if (parsed) setCustomEndDate(parsed);
+                }}
+                placeholder="YYYY-MM-DD"
+                style={styles.dateField}
+                outlineStyle={{ borderRadius: 10 }}
+              />
+            ) : (
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setPickerTarget('end');
+                  setShowCustomPicker(true);
+                }}
+                icon="calendar"
+                style={styles.dateBtn}
+              >
+                {formatDateInput(customEndDate)}
+              </Button>
+            )}
+          </View>
+        </View>
+      )}
+
+      {Platform.OS !== 'web' && showCustomPicker && (
+        <DateTimePicker
+          value={pickerTarget === 'start' ? customStartDate : customEndDate}
+          mode="date"
+          display="default"
+          onChange={(_: unknown, date?: Date) => {
+            setShowCustomPicker(false);
+            if (date) {
+              if (pickerTarget === 'start') setCustomStartDate(date);
+              else setCustomEndDate(date);
+            }
+          }}
+          maximumDate={pickerTarget === 'start' ? customEndDate : undefined}
+          minimumDate={pickerTarget === 'end' ? customStartDate : undefined}
+        />
+      )}
 
       <ExportButton />
 
@@ -325,4 +477,14 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     alignItems: 'center',
   },
+  customDateRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.sm,
+  },
+  dateInput: { flex: 1 },
+  dateField: { height: 40 },
+  dateBtn: { borderRadius: 10 },
 });

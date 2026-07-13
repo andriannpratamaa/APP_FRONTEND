@@ -26,6 +26,7 @@ import {
 import { TimeRange, ChartData } from '../../types';
 
 const timeRangeOptions = [
+  { label: '5m', value: '5m' },
   { label: '1j', value: '1h' },
   { label: '6j', value: '6h' },
   { label: '24j', value: '24h' },

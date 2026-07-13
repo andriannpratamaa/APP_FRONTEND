@@ -10,7 +10,8 @@ import {
 import { ENDPOINTS } from '../constants/api';
 
 const rangeConfig: Record<TimeRange, { interval: string; hours: number }> = {
-  '1h': { interval: 'minute', hours: 1 },
+  '5m': { interval: 'minute', hours: 5 / 60 },
+  '1h': { interval: 'hour', hours: 1 },
   '6h': { interval: 'hour', hours: 6 },
   '12h': { interval: 'hour', hours: 12 },
   '24h': { interval: 'hour', hours: 24 },
