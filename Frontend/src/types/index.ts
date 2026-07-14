@@ -15,7 +15,7 @@ export interface MonitoringData {
 
 export type DeviceStatus = 'online' | 'offline' | 'warning';
 
-export type TimeRange = '5m' | '1h' | '6h' | '12h' | '24h' | '7d' | '30d';
+export type TimeRange = '1h' | '6h' | '12h' | '24h' | '7d' | '30d';
 
 export interface ChartDataPoint {
   timestamp: string;
@@ -80,8 +80,6 @@ export interface ExportRequest {
 export interface SettingsState {
   darkMode: boolean;
   notificationsEnabled: boolean;
-  autoRefresh: boolean;
-  refreshInterval: number;
   historyRefreshInterval: number;
   selectedDeviceId: number | null;
 }

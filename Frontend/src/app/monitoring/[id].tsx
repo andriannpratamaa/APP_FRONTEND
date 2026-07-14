@@ -19,6 +19,7 @@ import {
   formatTemperature,
   formatHumidity,
 } from '../../utils/format';
+import { getEffectiveStatus } from '../../utils/status';
 
 export default function MonitoringDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -112,7 +113,7 @@ export default function MonitoringDetailScreen() {
                 Waktu Perekaman
               </Text>
             </View>
-            <StatusBadge status={data.status} />
+            <StatusBadge status={getEffectiveStatus(data.status, data.recorded_at)} />
           </Card.Content>
         </Card>
 

@@ -23,10 +23,10 @@ import {
   formatHumidity,
   formatTimeAgo,
 } from '../../utils/format';
-import { TimeRange, ChartData } from '../../types';
+import { ChartData, TimeRange } from '../../types';
+import { getEffectiveStatus } from '../../utils/status';
 
 const timeRangeOptions = [
-  { label: '5m', value: '5m' },
   { label: '1j', value: '1h' },
   { label: '6j', value: '6h' },
   { label: '24j', value: '24h' },
@@ -44,7 +44,7 @@ interface SelectedChart {
 export default function DashboardScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const [timeRange, setTimeRange] = useState<TimeRange>('1h');
+  const [timeRange, setTimeRange] = useState<TimeRange | ''>('');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedChart, setSelectedChart] = useState<SelectedChart | null>(null);
 
@@ -169,7 +169,7 @@ export default function DashboardScreen() {
             </Text>
           </View>
         </View>
-        <StatusBadge status={latestData?.status === 'online' ? 'online' : 'offline'} />
+        <StatusBadge status={getEffectiveStatus(latestData?.status, latestData?.recorded_at)} />
       </View>
 
       <DeviceSelector />
@@ -222,7 +222,7 @@ export default function DashboardScreen() {
           </Text>
           <SegmentedButtons
             value={timeRange}
-            onValueChange={(val) => setTimeRange(val as TimeRange)}
+            onValueChange={(val) => setTimeRange(prev => prev === val ? '' : val as TimeRange | '')}
             buttons={timeRangeOptions}
             density="small"
             style={styles.rangeButtons}

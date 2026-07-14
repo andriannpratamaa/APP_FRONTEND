@@ -4,7 +4,6 @@ import {
   useTheme,
   Card,
   Switch,
-  Divider,
   SegmentedButtons,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,24 +44,11 @@ export default function SettingsScreen() {
   const {
     darkMode,
     notificationsEnabled,
-    autoRefresh,
-    refreshInterval,
     historyRefreshInterval,
     setDarkMode,
     setNotificationsEnabled,
-    setAutoRefresh,
-    setRefreshInterval,
     setHistoryRefreshInterval,
   } = useSettingsStore();
-
-  const refreshIntervalOptions = [
-    { label: '15s', value: '15' },
-    { label: '30s', value: '30' },
-    { label: '60s', value: '60' },
-    { label: '5m', value: '300' },
-    { label: '30m', value: '1800' },
-    { label: '1j', value: '3600' },
-  ];
 
   const historyRefreshOptions = [
     { label: '5m', value: '300' },
@@ -154,65 +140,6 @@ export default function SettingsScreen() {
                 color={theme.colors.primary}
               />
             </SettingRow>
-          </Card.Content>
-        </Card>
-
-        <Card
-          style={[
-            styles.section,
-            {
-              backgroundColor: theme.dark
-                ? 'rgba(30, 41, 59, 0.7)'
-                : theme.colors.elevation.level1,
-              borderColor: theme.dark ? 'rgba(148, 163, 184, 0.08)' : 'transparent',
-            },
-          ]}
-        >
-          <Card.Content>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
-            >
-              Pembaruan Data
-            </Text>
-
-            <SettingRow
-              icon="sync-outline"
-              label="Auto Refresh"
-              description="Perbarui data secara otomatis"
-            >
-              <Switch
-                value={autoRefresh}
-                onValueChange={setAutoRefresh}
-                color={theme.colors.primary}
-              />
-            </SettingRow>
-
-            {autoRefresh && (
-              <>
-                <Divider style={[styles.divider, { backgroundColor: theme.colors.outline }]} />
-                <View style={styles.subSetting}>
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: theme.colors.onSurface, fontWeight: '500' }}
-                  >
-                    Interval Refresh
-                  </Text>
-                  <Text
-                    variant="bodySmall"
-                    style={{ color: theme.colors.onSurfaceVariant, marginBottom: SPACING.sm }}
-                  >
-                    Frekuensi pembaruan data
-                  </Text>
-                  <SegmentedButtons
-                    value={String(refreshInterval)}
-                    onValueChange={(val) => setRefreshInterval(Number(val))}
-                    buttons={refreshIntervalOptions}
-                    density="small"
-                  />
-                </View>
-              </>
-            )}
           </Card.Content>
         </Card>
 

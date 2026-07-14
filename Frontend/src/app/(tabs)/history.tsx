@@ -30,6 +30,7 @@ import { DeviceSelector } from '../../components/DeviceSelector';
 import { COLORS, SPACING } from '../../constants/theme';
 import { formatDate, formatTime, formatVoltage, formatCurrent, formatTemperature, formatHumidity } from '../../utils/format';
 import { HistoryParams, MonitoringData } from '../../types';
+import { getEffectiveStatus } from '../../utils/status';
 
 let DateTimePicker: React.ComponentType<{
   value: Date;
@@ -193,7 +194,7 @@ export default function HistoryScreen() {
                   </Text>
                 </View>
               </View>
-              <StatusBadge status={item.status} size="sm" />
+              <StatusBadge status={getEffectiveStatus(item.status, item.recorded_at)} size="sm" />
             </View>
 
             <View style={styles.cardBody}>

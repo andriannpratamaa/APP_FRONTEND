@@ -7,8 +7,6 @@ interface SettingsStore extends SettingsState {
   loadSettings: () => Promise<void>;
   setDarkMode: (value: boolean) => Promise<void>;
   setNotificationsEnabled: (value: boolean) => Promise<void>;
-  setAutoRefresh: (value: boolean) => Promise<void>;
-  setRefreshInterval: (value: number) => Promise<void>;
   setHistoryRefreshInterval: (value: number) => Promise<void>;
   setSelectedDeviceId: (value: number | null) => Promise<void>;
 }
@@ -16,8 +14,6 @@ interface SettingsStore extends SettingsState {
 const defaultSettings: SettingsState = {
   darkMode: false,
   notificationsEnabled: true,
-  autoRefresh: true,
-  refreshInterval: 30,
   historyRefreshInterval: 3600,
   selectedDeviceId: null,
 };
@@ -45,16 +41,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   setNotificationsEnabled: async (value) => {
     set({ notificationsEnabled: value });
     await persist({ notificationsEnabled: value });
-  },
-
-  setAutoRefresh: async (value) => {
-    set({ autoRefresh: value });
-    await persist({ autoRefresh: value });
-  },
-
-  setRefreshInterval: async (value) => {
-    set({ refreshInterval: value });
-    await persist({ refreshInterval: value });
   },
 
   setHistoryRefreshInterval: async (value) => {
