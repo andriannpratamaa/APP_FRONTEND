@@ -75,6 +75,7 @@ export interface DashboardData {
 export interface ExportRequest {
   start_date: string;
   end_date: string;
+  interval?: string;
 }
 
 export interface SettingsState {

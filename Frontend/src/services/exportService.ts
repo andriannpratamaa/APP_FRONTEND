@@ -62,7 +62,10 @@ export const exportService = {
   ): Promise<string> => {
     const fileName = `monitoring_${params.start_date.slice(0, 10)}_${params.end_date.slice(0, 10)}.xlsx`;
 
-    const downloadUrl = `${API.BASE_URL}${ENDPOINTS.EXPORT.EXCEL}?start_date=${encodeURIComponent(params.start_date)}&end_date=${encodeURIComponent(params.end_date)}`;
+    let downloadUrl = `${API.BASE_URL}${ENDPOINTS.EXPORT.EXCEL}?start_date=${encodeURIComponent(params.start_date)}&end_date=${encodeURIComponent(params.end_date)}`;
+    if (params.interval) {
+      downloadUrl += `&interval=${encodeURIComponent(params.interval)}`;
+    }
 
     if (Platform.OS === 'web') {
       return downloadWeb(downloadUrl, fileName);

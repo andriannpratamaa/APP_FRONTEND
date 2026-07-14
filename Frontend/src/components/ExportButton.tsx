@@ -76,6 +76,7 @@ export const ExportButton = () => {
       const uri = await exportData({
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
+        interval: '10menit',
       });
       setFileUri(uri);
     } catch {

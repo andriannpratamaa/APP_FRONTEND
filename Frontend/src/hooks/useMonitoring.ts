@@ -64,11 +64,6 @@ export const useMonitoringChart = (timeRange: TimeRange | '') => {
   const [realtimeData, setRealtimeData] = useState<ChartData>(emptyChart);
 
   useEffect(() => {
-    if (!isRealtime) return;
-    setRealtimeData(emptyChart);
-  }, [isRealtime]);
-
-  useEffect(() => {
     if (!latest) return;
 
     const cutoff = Date.now() - 5 * 60 * 1000;
