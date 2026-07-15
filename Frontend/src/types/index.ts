@@ -73,14 +73,13 @@ export interface DashboardData {
 }
 
 export interface ExportRequest {
-  start_date: string;
-  end_date: string;
-  interval?: string;
+  id_device: number | null;
+  from: string;
+  to: string;
 }
 
 export interface SettingsState {
   darkMode: boolean;
   notificationsEnabled: boolean;
-  historyRefreshInterval: number;
   selectedDeviceId: number | null;
 }

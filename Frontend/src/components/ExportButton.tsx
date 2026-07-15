@@ -4,13 +4,13 @@ import {
   Button,
   Text,
   useTheme,
-  ProgressBar,
   IconButton,
   TextInput,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { SPACING } from '../constants/theme';
 import { useExport } from '../hooks/useExport';
+import { useSettingsStore } from '../store/settings';
 
 let DateTimePicker: React.ComponentType<{
   value: Date;
@@ -36,8 +36,8 @@ const quickRanges = [
 
 export const ExportButton = () => {
   const theme = useTheme();
-  const { isExporting, progress, error, exportData, shareFile, reset } =
-    useExport();
+  const { selectedDeviceId } = useSettingsStore();
+  const { isExporting, error, exportData, reset } = useExport();
   const [visible, setVisible] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -47,7 +47,6 @@ export const ExportButton = () => {
   const [endDate, setEndDate] = useState(new Date());
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
-  const [fileUri, setFileUri] = useState<string | null>(null);
 
   const formatDate = (date: Date) => {
     const y = date.getFullYear();
@@ -72,28 +71,16 @@ export const ExportButton = () => {
   };
 
   const handleExport = async () => {
-    try {
-      const uri = await exportData({
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        interval: '10menit',
-      });
-      setFileUri(uri);
-    } catch {
-      // error handled in hook
-    }
-  };
-
-  const handleShare = async () => {
-    if (fileUri) {
-      await shareFile(fileUri);
-    }
+    await exportData({
+      id_device: selectedDeviceId,
+      from: startDate.toISOString(),
+      to: endDate.toISOString(),
+    });
   };
 
   const handleClose = () => {
     setVisible(false);
     reset();
-    setFileUri(null);
     const d = new Date();
     d.setDate(d.getDate() - 7);
     setStartDate(d);
@@ -163,7 +150,7 @@ export const ExportButton = () => {
               <View style={styles.dateRow}>
                 <View style={styles.dateInput}>
                   <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 4, fontWeight: '600' }}>
-                    Mulai
+                    Dari
                   </Text>
                   {Platform.OS === 'web' ? (
                     <TextInput
@@ -196,7 +183,7 @@ export const ExportButton = () => {
                 </Text>
                 <View style={styles.dateInput}>
                   <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 4, fontWeight: '600' }}>
-                    Selesai
+                    Sampai
                   </Text>
                   {Platform.OS === 'web' ? (
                     <TextInput
@@ -248,34 +235,10 @@ export const ExportButton = () => {
                 />
               )}
 
-              {isExporting && (
-                <View style={styles.progressContainer}>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: SPACING.xs }}>
-                    Mengekspor data... {progress}%
-                  </Text>
-                  <ProgressBar
-                    progress={progress / 100}
-                    color={theme.colors.primary}
-                    style={styles.progress}
-                  />
-                </View>
-              )}
-
               {error && (
                 <Text variant="bodySmall" style={[styles.error, { color: theme.colors.error }]}>
                   {error}
                 </Text>
-              )}
-
-              {fileUri && (
-                <Button
-                  mode="contained"
-                  icon="share-variant"
-                  onPress={handleShare}
-                  style={styles.shareBtn}
-                >
-                  Bagikan File
-                </Button>
               )}
             </View>
 
@@ -288,7 +251,7 @@ export const ExportButton = () => {
                 icon="download"
                 style={styles.exportBtn}
               >
-                {isExporting ? 'Mengekspor...' : 'Export'}
+                {isExporting ? 'Membuka...' : 'Export'}
               </Button>
             </View>
           </View>
@@ -350,10 +313,7 @@ const styles = StyleSheet.create({
   dateInput: { flex: 1 },
   dateField: { height: 40 },
   dateBtn: { borderRadius: 10 },
-  progressContainer: { marginTop: SPACING.md },
-  progress: { height: 6, borderRadius: 3, marginTop: SPACING.xs },
   error: { textAlign: 'center', marginTop: SPACING.sm },
-  shareBtn: { borderRadius: 12, marginTop: SPACING.sm },
   footer: { marginTop: SPACING.lg },
   exportBtn: { borderRadius: 12, paddingVertical: 6 },
 });

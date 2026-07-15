@@ -113,23 +113,22 @@ export default function HistoryScreen() {
     };
 
     if (filterValue === 'custom') {
-      params.start_date = customStartDate.toISOString();
-      params.end_date = customEndDate.toISOString();
+      params.start_date = formatDateInput(customStartDate);
+      params.end_date = formatDateInput(customEndDate);
     } else if (filterValue === 'day') {
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      params.start_date = start.toISOString();
-      params.end_date = new Date().toISOString();
+      const today = new Date();
+      params.start_date = formatDateInput(today);
+      params.end_date = formatDateInput(today);
     } else if (filterValue === 'week') {
       const start = new Date();
       start.setDate(start.getDate() - 7);
-      params.start_date = start.toISOString();
-      params.end_date = new Date().toISOString();
+      params.start_date = formatDateInput(start);
+      params.end_date = formatDateInput(new Date());
     } else if (filterValue === 'month') {
       const start = new Date();
       start.setMonth(start.getMonth() - 1);
-      params.start_date = start.toISOString();
-      params.end_date = new Date().toISOString();
+      params.start_date = formatDateInput(start);
+      params.end_date = formatDateInput(new Date());
     }
 
     return params;

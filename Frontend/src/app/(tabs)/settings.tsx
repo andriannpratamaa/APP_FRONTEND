@@ -4,7 +4,6 @@ import {
   useTheme,
   Card,
   Switch,
-  SegmentedButtons,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,20 +43,9 @@ export default function SettingsScreen() {
   const {
     darkMode,
     notificationsEnabled,
-    historyRefreshInterval,
     setDarkMode,
     setNotificationsEnabled,
-    setHistoryRefreshInterval,
   } = useSettingsStore();
-
-  const historyRefreshOptions = [
-    { label: '5m', value: '300' },
-    { label: '15m', value: '900' },
-    { label: '30m', value: '1800' },
-    { label: '1j', value: '3600' },
-    { label: '6j', value: '21600' },
-    { label: '24j', value: '86400' },
-  ];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -140,48 +128,6 @@ export default function SettingsScreen() {
                 color={theme.colors.primary}
               />
             </SettingRow>
-          </Card.Content>
-        </Card>
-
-        <Card
-          style={[
-            styles.section,
-            {
-              backgroundColor: theme.dark
-                ? 'rgba(30, 41, 59, 0.7)'
-                : theme.colors.elevation.level1,
-              borderColor: theme.dark ? 'rgba(148, 163, 184, 0.08)' : 'transparent',
-            },
-          ]}
-        >
-          <Card.Content>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
-            >
-              Pembaruan Riwayat
-            </Text>
-
-            <View style={styles.subSetting}>
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.onSurface, fontWeight: '500' }}
-              >
-                Interval Riwayat
-              </Text>
-              <Text
-                variant="bodySmall"
-                style={{ color: theme.colors.onSurfaceVariant, marginBottom: SPACING.sm }}
-              >
-                Interval pembaruan data riwayat
-              </Text>
-              <SegmentedButtons
-                value={String(historyRefreshInterval)}
-                onValueChange={(val) => setHistoryRefreshInterval(Number(val))}
-                buttons={historyRefreshOptions}
-                density="small"
-              />
-            </View>
           </Card.Content>
         </Card>
 

@@ -14,6 +14,7 @@ export const ENDPOINTS = {
   DEVICES: '/devices',
   EXPORT: {
     EXCEL: '/export/excel',
+    EXCEL_V2: '/export/excel-v2',
   },
 } as const;
 

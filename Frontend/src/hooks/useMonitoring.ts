@@ -33,7 +33,7 @@ export const useLatestMonitoring = () => {
 };
 
 export const useMonitoringHistory = (params: HistoryParams) => {
-  const { historyRefreshInterval, selectedDeviceId } = useSettingsStore();
+  const { selectedDeviceId } = useSettingsStore();
 
   const mergedParams = { ...params };
   if (selectedDeviceId) mergedParams.device_id = selectedDeviceId;
@@ -42,7 +42,6 @@ export const useMonitoringHistory = (params: HistoryParams) => {
     queryKey: [...CACHE_KEYS.HISTORY, mergedParams],
     queryFn: () => monitoringService.getHistory(mergedParams),
     placeholderData: (prev) => prev,
-    refetchInterval: historyRefreshInterval * 1000,
   });
 };
 

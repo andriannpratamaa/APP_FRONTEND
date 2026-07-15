@@ -1,147 +1,154 @@
-import { useState, useCallback, useMemo } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-} from 'react-native';
-import { Text, useTheme, SegmentedButtons } from 'react-native-paper';
+import { useCallback, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { Text, useTheme, Card, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useDashboard, useMonitoringChart } from '../../hooks/useMonitoring';
-import { MonitoringCard } from '../../components/MonitoringCard';
+import { router } from 'expo-router';
+import { useDevices } from '../../hooks/useDevice';
 import { StatusBadge } from '../../components/StatusBadge';
-import { DashboardSkeleton } from '../../components/LoadingSkeleton';
+import { DeviceInfoModal } from '../../components/DeviceInfoModal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
-import { DeviceSelector } from '../../components/DeviceSelector';
-import { ChartPopup } from '../../components/ChartPopup';
-import { COLORS, SPACING } from '../../constants/theme';
-import {
-  formatVoltage,
-  formatCurrent,
-  formatTemperature,
-  formatHumidity,
-  formatTimeAgo,
-} from '../../utils/format';
-import { ChartData, TimeRange } from '../../types';
+import { deviceService } from '../../services/device';
+import { useQueryClient } from '@tanstack/react-query';
+import { CACHE_KEYS } from '../../constants/api';
+import { SPACING, COLORS } from '../../constants/theme';
+import { DeviceInfo } from '../../types';
 import { getEffectiveStatus } from '../../utils/status';
-
-const timeRangeOptions = [
-  { label: '1j', value: '1h' },
-  { label: '6j', value: '6h' },
-  { label: '24j', value: '24h' },
-  { label: '7h', value: '7d' },
-  { label: '30h', value: '30d' },
-];
-
-interface SelectedChart {
-  title: string;
-  color: string;
-  unit: string;
-  dataKey: keyof ChartData;
-}
 
 export default function DashboardScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const [timeRange, setTimeRange] = useState<TimeRange | ''>('');
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedChart, setSelectedChart] = useState<SelectedChart | null>(null);
+  const queryClient = useQueryClient();
+  const { data: devices, isLoading, isError, error, refetch } = useDevices();
+  const [selectedDevice, setSelectedDevice] = useState<DeviceInfo | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeviceInfo | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const {
-    data: dashboard,
-    isLoading: isDashboardLoading,
-    isError: isDashboardError,
-    error: dashboardError,
-    refetch: refetchDashboard,
-  } = useDashboard();
-
-  const {
-    data: chartData,
-    isLoading: isChartLoading,
-  } = useMonitoringChart(timeRange);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refetchDashboard();
-    setRefreshing(false);
-  }, [refetchDashboard]);
-
-  const latestData = dashboard?.latest_monitoring;
-
-  const getStatus = (value: number, critical: number, warning: number): 'critical' | 'warning' | 'normal' => {
-    return value > critical ? 'critical' : value > warning ? 'warning' : 'normal';
+  const handleDeleteDevice = (device: DeviceInfo) => {
+    setDeleteTarget(device);
   };
 
-  const zeroData = { ac_voltage: 0, ac_current: 0, dc_voltage: 0, temperature: 0, humidity: 0 };
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deviceService.delete(deleteTarget.id);
+      queryClient.invalidateQueries({ queryKey: CACHE_KEYS.DEVICES });
+      setDeleteTarget(null);
+    } catch (err: unknown) {
+      let msg = 'Gagal menghapus device';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response: { data: { message?: string; errors?: Record<string, string[]> } } };
+        if (axiosErr.response?.data?.message) {
+          msg = axiosErr.response.data.message;
+        } else if (axiosErr.response?.data?.errors) {
+          const first = Object.values(axiosErr.response.data.errors)[0];
+          if (first?.length) msg = first[0];
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      setDeleteTarget(null);
+      setDeleting(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
-  const data = latestData || zeroData;
+  const onRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: CACHE_KEYS.DEVICES });
+  }, [queryClient]);
 
-  const monitoringCards = useMemo(
-    () => [
-      {
-        title: 'Tegangan AC',
-        value: formatVoltage(data.ac_voltage),
-        unit: 'Volt',
-        icon: 'flash-outline' as keyof typeof Ionicons.glyphMap,
-        color: COLORS.voltageAC,
-        status: getStatus(data.ac_voltage, 240, 220),
-        dataKey: 'ac_voltage' as keyof ChartData,
-      },
-      {
-        title: 'Arus AC',
-        value: formatCurrent(data.ac_current),
-        unit: 'Ampere',
-        icon: 'barbell-outline' as keyof typeof Ionicons.glyphMap,
-        color: COLORS.currentAC,
-        status: getStatus(data.ac_current, 10, 8),
-        dataKey: 'ac_current' as keyof ChartData,
-      },
-      {
-        title: 'Tegangan DC',
-        value: formatVoltage(data.dc_voltage),
-        unit: 'Volt',
-        icon: 'battery-full-outline' as keyof typeof Ionicons.glyphMap,
-        color: COLORS.voltageDC,
-        status: data.dc_voltage < 11 ? 'critical' as const : data.dc_voltage < 12 ? 'warning' as const : 'normal' as const,
-        dataKey: 'dc_voltage' as keyof ChartData,
-      },
-      {
-        title: 'Suhu',
-        value: formatTemperature(data.temperature),
-        unit: '°C',
-        icon: 'thermometer-outline' as keyof typeof Ionicons.glyphMap,
-        color: COLORS.temperature,
-        status: getStatus(data.temperature, 45, 35),
-        dataKey: 'temperature' as keyof ChartData,
-      },
-      {
-        title: 'Kelembapan',
-        value: formatHumidity(data.humidity),
-        unit: '%RH',
-        icon: 'water-outline' as keyof typeof Ionicons.glyphMap,
-        color: COLORS.humidity,
-        status: 'normal' as const,
-        dataKey: 'humidity' as keyof ChartData,
-      },
-    ],
-    [data]
+  const renderDevice = ({ item, index }: { item: DeviceInfo; index: number }) => {
+    const effectiveStatus = getEffectiveStatus(item.status, item.last_seen);
+    const isOnline = effectiveStatus === 'online';
+    const colors = [
+      { bg: COLORS.voltageAC + '15', icon: COLORS.voltageAC },
+      { bg: COLORS.currentAC + '15', icon: COLORS.currentAC },
+      { bg: COLORS.voltageDC + '15', icon: COLORS.voltageDC },
+      { bg: COLORS.temperature + '15', icon: COLORS.temperature },
+      { bg: COLORS.humidity + '15', icon: COLORS.humidity },
+    ];
+    const color = colors[index % colors.length];
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push({ pathname: '/device/[id]', params: { id: String(item.id) } })}
+        onLongPress={() => {
+          setSelectedDevice(item);
+          setModalVisible(true);
+        }}
+        delayLongPress={500}
+      >
+        <Card
+          style={[
+            styles.deviceCard,
+            {
+              backgroundColor: theme.dark
+                ? 'rgba(30, 41, 59, 0.7)'
+                : theme.colors.elevation.level1,
+              borderColor: isOnline ? COLORS.online + '30' : 'transparent',
+            },
+          ]}
+        >
+          <Card.Content style={styles.cardContent}>
+            <View style={[styles.cardIcon, { backgroundColor: color.bg }]}>
+              <Ionicons name="hardware-chip-outline" size={24} color={color.icon} />
+            </View>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardHeader}>
+                <Text variant="titleMedium" style={[styles.deviceName, { color: theme.colors.onSurface }]} numberOfLines={1}>
+                  {item.device_name}
+                </Text>
+                <StatusBadge status={effectiveStatus} size="sm" />
+              </View>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }} numberOfLines={1}>
+                {item.device_code}
+              </Text>
+              {item.location ? (
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={12} color={theme.colors.onSurfaceVariant} />
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginLeft: 4 }}>
+                    {item.location}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.onSurfaceVariant} />
+          </Card.Content>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderHeader = () => (
+    <View style={[styles.header, { paddingTop: insets.top + SPACING.md }]}>
+      <View style={styles.headerLeft}>
+        <View style={[styles.headerIcon, { backgroundColor: theme.colors.primary + '18' }]}>
+          <Ionicons name="speedometer" size={20} color={theme.colors.primary} />
+        </View>
+        <View>
+          <Text variant="headlineSmall" style={[styles.headerTitle, { color: theme.colors.onSurface }]}>
+            Perangkat
+          </Text>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            {devices ? `${devices.length} device terdaftar` : 'Memuat...'}
+          </Text>
+        </View>
+      </View>
+    </View>
   );
 
-  if (isDashboardLoading) {
+  if (isError) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <DashboardSkeleton />
-      </View>
-    );
-  }
-
-  if (isDashboardError) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        {renderHeader()}
         <ErrorState
-          message={(dashboardError as Error)?.message || 'Gagal memuat data'}
-          onRetry={refetchDashboard}
+          message={(error as Error)?.message || 'Gagal memuat device'}
+          onRetry={refetch}
         />
       </View>
     );
@@ -149,107 +156,76 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + SPACING.md }]}>
-        <View style={styles.headerLeft}>
-          <View style={[styles.headerIcon, { backgroundColor: theme.colors.primary + '18' }]}>
-            <Ionicons name="speedometer" size={20} color={theme.colors.primary} />
-          </View>
-          <View>
-            <Text
-              variant="headlineSmall"
-              style={[styles.headerTitle, { color: theme.colors.onSurface }]}
-            >
-              Dashboard
-            </Text>
-            <Text
-              variant="bodySmall"
-              style={{ color: theme.colors.onSurfaceVariant }}
-            >
-              {dashboard?.last_update ? formatTimeAgo(dashboard.last_update) : 'Memuat...'}
-            </Text>
-          </View>
-        </View>
-        <StatusBadge status={getEffectiveStatus(latestData?.status, latestData?.recorded_at)} />
-      </View>
+      {renderHeader()}
 
-      <DeviceSelector />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
+      <FlatList
+        data={devices}
+        renderItem={renderDevice}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={isLoading}
             onRefresh={onRefresh}
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
           />
         }
-      >
-        <View style={styles.sectionLabel}>
-          <Text
-            variant="titleSmall"
-            style={{ color: theme.colors.onSurfaceVariant, fontWeight: '700', letterSpacing: 0.5 }}
-          >
-            MONITORING
-          </Text>
-        </View>
-        {monitoringCards.map((card, index) => (
-          <MonitoringCard
-            key={index}
-            title={card.title}
-            value={card.value}
-            unit={card.unit}
-            icon={card.icon}
-            color={card.color}
-            status={card.status}
-            index={index}
-            onPress={() => setSelectedChart({
-              title: card.title,
-              color: card.color,
-              unit: card.unit,
-              dataKey: card.dataKey,
-            })}
-          />
-        ))}
+        ListEmptyComponent={
+          !isLoading ? (
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIcon, { backgroundColor: theme.colors.primary + '12' }]}>
+                <Ionicons name="hardware-chip-outline" size={40} color={theme.colors.primary} />
+              </View>
+              <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
+                Belum ada device
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 4 }}>
+                Tambah device baru untuk mulai monitoring
+              </Text>
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          <View style={styles.footer}>
+            <Button
+              mode="contained"
+              icon="plus"
+              onPress={() => router.push('/device/add')}
+              style={styles.addBtn}
+              contentStyle={styles.addBtnContent}
+            >
+              Tambah Device
+            </Button>
+            <View style={{ height: SPACING.xxl }} />
+          </View>
+        }
+      />
 
-        <View style={styles.chartSection}>
-          <Text
-            variant="titleSmall"
-            style={{ color: theme.colors.onSurfaceVariant, fontWeight: '700', letterSpacing: 0.5, marginBottom: SPACING.sm }}
-          >
-            RENTANG WAKTU GRAFIK
-          </Text>
-          <SegmentedButtons
-            value={timeRange}
-            onValueChange={(val) => setTimeRange(prev => prev === val ? '' : val as TimeRange | '')}
-            buttons={timeRangeOptions}
-            density="small"
-            style={styles.rangeButtons}
-          />
-        </View>
+      <DeviceInfoModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        device={selectedDevice}
+        onDeleteDevice={handleDeleteDevice}
+      />
 
-        <View style={{ height: SPACING.xxl }} />
-      </ScrollView>
-
-      <ChartPopup
-        visible={!!selectedChart}
-        onClose={() => setSelectedChart(null)}
-        chartData={chartData}
-        isLoading={isChartLoading}
-        title={selectedChart?.title || ''}
-        color={selectedChart?.color || ''}
-        unit={selectedChart?.unit || ''}
-        dataKey={selectedChart?.dataKey || 'ac_voltage'}
+      <ConfirmDialog
+        visible={deleteTarget !== null}
+        title="Hapus Device"
+        message={deleteTarget ? `Yakin ingin menghapus "${deleteTarget.device_name}"? Semua data monitoring akan ikut terhapus.` : ''}
+        confirmLabel="Hapus"
+        destructive
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -272,18 +248,63 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: '800',
   },
-  scrollContent: {
+  listContent: {
     padding: SPACING.md,
+    paddingTop: 0,
   },
-  sectionLabel: {
-    paddingHorizontal: SPACING.xs,
-    paddingBottom: SPACING.sm,
-  },
-  chartSection: {
-    paddingHorizontal: SPACING.xs,
-    paddingTop: SPACING.md,
-  },
-  rangeButtons: {
+  deviceCard: {
+    borderRadius: 16,
     marginBottom: SPACING.sm,
+    borderWidth: 1,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  cardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  deviceName: {
+    fontWeight: '700',
+    flex: 1,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  footer: {
+    paddingTop: SPACING.sm,
+  },
+  addBtn: {
+    borderRadius: 12,
+  },
+  addBtnContent: {
+    height: 48,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xl * 2,
+    gap: SPACING.sm,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

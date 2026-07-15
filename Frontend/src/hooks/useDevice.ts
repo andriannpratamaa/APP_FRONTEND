@@ -6,5 +6,6 @@ export const useDevices = () => {
   return useQuery({
     queryKey: CACHE_KEYS.DEVICES,
     queryFn: deviceService.getAll,
+    refetchInterval: 5000,
   });
 };
