@@ -2,7 +2,7 @@
 
 Aplikasi mobile monitoring perangkat IoT secara realtime berbasis **Expo (React Native)** dengan Clean Architecture.
 
-
+dd
 
 - **Framework:** Expo SDK 57 + React Native 0.86
 - **Language:** TypeScript (strict mode)
